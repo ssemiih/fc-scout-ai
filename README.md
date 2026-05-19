@@ -1,99 +1,99 @@
-# ⚡ FC Scout AI — Veri Odaklı Oyuncu Benzerlik Motoru
+# ⚡ FC Scout AI — Data-Driven Player Similarity Engine
 
-> EA FC 26 oyuncuları arasında **pozisyona özel ağırlıklı benzerlik analizi (Similarity Engine)** yapan, veri bilimi prensipleriyle çalışan scouting aracı.  
-> 14,412 Oyuncu · Saf HTML/CSS/JS · Sıfır Bağımlılık · Tamamen İstemci Taraflı (Client-side)
+> A scouting tool for EA FC 26 players that performs **position-specific weighted similarity analysis (Similarity Engine)** using data science principles.  
+> 14,412 Players · Pure HTML/CSS/JS · Zero Dependencies · Fully Client-Side
 
-**[🔴 Canlı Demo İçin Tıklayın](https://ssemiih.github.io/fc-scout-ai)**
-
----
+**[🔴 Click for Live Demo](https://ssemiih.github.io/fc-scout-ai)**
 
 ---
 
-## ✨ Öne Çıkan Özellikler
+---
 
-| Özellik | Detay |
+## ✨ Key Features
+
+| Feature | Details |
 |--------|-------|
-| 🧮 **Ağırlıklı Vektör Analizi** | ST, CB, CAM gibi her mevki için farklı özellik ağırlıkları ile dinamik hesaplama. |
-| 🎯 **Çok Katmanlı Skorlama** | Euclidean (Öklid) mesafesi + lig seviyesi cezası + zayıf ayak/yetenek cezaları + play style bonusları. |
-| 🎨 **Veri Görselleştirme** | Benzerlik oranına göre renk kodlaması: Mükemmel (Yeşil) → Orta (Sarı) → Düşük (Kırmızı). |
-| 🔍 **Anlık Arama (Autocomplete)** | Performanslı ve gecikmesiz oyuncu öneri sistemi. |
-| 📊 **Detaylı Analiz Barları** | Karta tıklandığında 14 farklı oyuncu özelliğinin görselleştirilmesi. |
-| 🎯 **Gelişmiş Filtreleme** | 155+ Ülke, 45 Lig, Spesifik Mevki ve Yaş (U23 vb.) filtreleri. |
+| 🧮 **Weighted Vector Analysis** | Dynamic calculation with different attribute weights for each position (e.g., ST, CB, CAM). |
+| 🎯 **Multi-Layered Scoring** | Euclidean distance + league tier penalty + weak foot/skill move penalties + play style bonuses. |
+| 🎨 **Data Visualization** | Color-coded similarity rates: Perfect (Green) → Medium (Yellow) → Low (Red). |
+| 🔍 **Instant Search (Autocomplete)** | Highly performant, zero-latency player recommendation system. |
+| 📊 **Detailed Analysis Bars** | Visual representation of 14 different player attributes upon clicking a card. |
+| 🎯 **Advanced Filtering** | 155+ Nations, 45 Leagues, Specific Positions, and Age (U23, etc.) filters. |
 
 ---
 
-## 🧠 Algoritma & Veri Bilimi Yaklaşımı
+## 🧠 Algorithm & Data Science Approach
 
-### Temel Mantık
-Projeyi standart bir arama motorundan ayıran temel özellik; her oyuncu için **pozisyonuna göre belirlenmiş ağırlıklı bir özellik vektörü** oluşturulmasıdır. Nihai benzerlik skoru şu denkleme dayanır:
+### Core Logic
+What separates this project from a standard search engine is the creation of a **position-specific weighted feature vector** for each player. The final similarity score is based on the following equation:
 
 `final_score = base_score - tier_penalty + foot_bonus - wf_penalty - sm_penalty + style_bonus`
 
-### 1. Boyut İndirgeme ve Grup Ağırlıkları
-Oyuncuların onlarca farklı istatistiği, mantıksal kümelere ayrılmıştır:
+### 1. Dimensionality Reduction & Group Weights
+Dozens of different player statistics are categorized into logical clusters:
 * **Box Threat:** Finishing, Positioning, Heading Accuracy, Penalties
 * **Distance Threat:** Long Shots, Shot Power, Volleys
 * **Playmaking:** Short Passing, Vision, Curve
 * **Agility:** Agility, Balance, Reactions, Composure
-* *(ve diğer fiziksel/defansif gruplar...)*
+* *(and other physical/defensive groups...)*
 
-### 2. Pozisyona Özel Ağırlıklandırma Matrisi (Örnek)
+### 2. Position-Specific Weighting Matrix (Example)
 
-| Mevki | Birincil Öncelik | Ağırlık | İkincil Öncelik | Ağırlık |
+| Position | Primary Focus | Weight | Secondary Focus | Weight |
 |-------|---------------|---------|---------------|---------|
-| **ST** | Box Threat | %35 | Speed | %12 |
-| **CB** | Def Awareness | %29 | Ball Winning | %29 |
-| **CAM** | Playmaking | %30 | Distance Threat | %18 |
+| **ST** | Box Threat | 35% | Speed | 12% |
+| **CB** | Def Awareness | 29% | Ball Winning | 29% |
+| **CAM** | Playmaking | 30% | Distance Threat | 18% |
 
-### 3. Mesafe (Distance) ve Skor Hesabı
-Veriler arasındaki varyansı dengelemek için Z-score normalizasyonu mantığı kullanılmış ve Öklid mesafesi üzerinden bir taban skor hesaplanmıştır:
+### 3. Distance and Score Calculation
+To balance the variance among the data, a Z-score normalization logic is applied, and a base score is calculated using the Euclidean distance:
 
 `scaled_features = StandardScaler(features)`  
 `weighted_vector = scaled_features * position_weights`  
 `distance = euclidean(target_vector, candidate_vector)`  
 `base_score = 100 * exp(-distance^2 * 15)`
 
-### 4. Bağlam Cezaları ve Bonusları
-Matematiksel benzerlik, futbolun gerçeklikleriyle (bağlam) harmanlanmıştır:
-* **Lig Seviyesi (Tier) Cezası:** Alt lig ile üst lig oyuncusu arasındaki kalite farkı cezalandırılır.
-* **Fiziksel Özellikler:** Ters ayak, yetenek hareketleri farklılıkları negatif çarpan olarak eklenir.
-* **Oyun Stili (Play Styles):** Ortak altın/gümüş oyun stilleri skora bonus (+1.0 / +2.5) olarak yansır.
+### 4. Contextual Penalties and Bonuses
+Mathematical similarity is blended with football realities (context):
+* **League Tier Penalty:** Quality differences between lower and top-tier league players are penalized.
+* **Physical Traits:** Differences in weak foot and skill moves are added as negative multipliers.
+* **Play Styles:** Shared gold/silver play styles reflect as bonuses (+1.0 / +2.5) to the score.
 
 ---
 
-## 📁 Proje Mimarisi & Veri Formatı
+## 📁 Project Architecture & Data Format
 
-**Bağımlılık Yoktur.** Sadece modern bir web tarayıcısı gereklidir. Veri çekimi performansını maksimize etmek için JSON dosyası `compact key` formatında küçültülmüştür.
+**Zero Dependencies.** Only a modern web browser is required. To maximize data fetching performance, the JSON file is minified using a `compact key` format.
 
 ```text
 fc-scout-ai/
-├── index.html          # Tek dosya uygulama (Core UI & Logic)
+├── index.html          # Single-page application (Core UI & Logic)
 ├── data/
-│   └── players.json    # Sıkıştırılmış EA FC 26 oyuncu veriseti (~9MB)
+│   └── players.json    # Compressed EA FC 26 player dataset (~9MB)
 └── README.md
 ```
 
 ---
 
-## 🛠️ Kurulum & Lokal Geliştirme
+## 🛠️ Local Development
 
-Projeyi kendi bilgisayarınızda çalıştırmak ve CORS (Cross-Origin Resource Sharing) politikalarına takılmamak için basit bir HTTP sunucusu kullanmalısınız:
+To run the project locally and bypass browser CORS (Cross-Origin Resource Sharing) policies, use a simple HTTP server:
 
 `python -m http.server 8080`
 
 ---
 
-## 👨‍💻 Geliştirici
+## 👨‍💻 Developer
 
 **Mahmut Semih Kiraz** *Computer Scientist & Data Analytics Enthusiast*
-* [LinkedIn](https://www.linkedin.com/in/semihkiraz1/)
+* [LinkedIn](https://www.linkedin.com/in/YOUR_LINKEDIN_URL) *(Buraya kendi linkini eklemeyi unutma)*
 * [GitHub](https://github.com/ssemiih)
 
-*Futbol verileri ve makine öğrenimi tabanlı analiz projeleri geliştirmekteyim. Geri bildirimleriniz ve işbirlikleri için ulaşabilirsiniz.*
+*Developing data-driven and machine learning-based analysis projects in football analytics. Open for feedback and collaborations.*
 
 ---
 
-## 📝 Lisans
-MIT License — İstediğiniz gibi kullanabilir, geliştirebilir ve kendi projelerinize entegre edebilirsiniz.
+## 📝 License
+MIT License — Feel free to use, fork, and integrate into your own projects.
 
-> *Not: EA FC 26 verileri eğitim, hobi ve veri bilimi pratikleri amacıyla kullanılmıştır. FC Scout AI, bağımsız bir analitik projesidir ve EA Sports ile resmi bir bağı bulunmamaktadır.*
+> *Note: EA FC 26 data is used for educational, hobby, and data science practice purposes only. FC Scout AI is an independent analytics project and has no official affiliation with EA Sports.*

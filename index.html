@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FC Scout AI – Player Similarity Engine</title>
-  <meta name="description" content="EA FC 26 oyuncuları arasında benzerlik analizi yapan scouting aracı." />
+  <meta name="description" content="A scouting tool that performs similarity analysis among EA FC 26 players." />
   <meta property="og:title" content="FC Scout AI" />
   <meta property="og:description" content="EA FC 26 Player Similarity Engine" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -435,32 +435,31 @@
 <main>
   <div class="hero visible" id="hero">
     <h1>FC SCOUT AI</h1>
-    <p>EA FC 26 · 14,412 oyuncu · Pozisyona özel ağırlıklı benzerlik analizi</p>
+    <p>EA FC 26 · 14,412 players · Position-specific weighted similarity analysis</p>
   </div>
 
-  <!-- Search + Filters -->
   <div class="search-card">
     <div class="search-row">
       <span class="search-icon">🔍</span>
-      <input type="text" id="searchInput" placeholder="Oyuncu ara... (örn: Erling Haaland, Ferdi Kadıoğlu)" autocomplete="off" />
+      <input type="text" id="searchInput" placeholder="Search players... (e.g. Erling Haaland, Ferdi Kadıoğlu)" autocomplete="off" />
       <button id="scoutBtn" disabled>SCOUT</button>
       <div id="suggestions"></div>
     </div>
 
     <div class="filters-grid">
       <div class="filter-group">
-        <label>MİLLİYET</label>
-        <select id="fNation"><option value="">Tümü</option></select>
+        <label>NATION</label>
+        <select id="fNation"><option value="">All</option></select>
       </div>
       <div class="filter-group">
-        <label>LİG</label>
-        <select id="fLeague"><option value="">Tümü</option></select>
+        <label>LEAGUE</label>
+        <select id="fLeague"><option value="">All</option></select>
       </div>
       <div class="filter-group">
-        <label>POZİSYON</label>
+        <label>POSITION</label>
         <select id="fPos">
-          <option value="">Tümü</option>
-          <option value="SAME">Aynı Mevki</option>
+          <option value="">All</option>
+          <option value="SAME">Same Position</option>
           <option value="ST">ST</option><option value="CF">CF</option>
           <option value="LW">LW</option><option value="RW">RW</option>
           <option value="LM">LM</option><option value="RM">RM</option>
@@ -471,15 +470,15 @@
         </select>
       </div>
       <div class="filter-group">
-        <label>MIN YAŞ</label>
+        <label>MIN AGE</label>
         <input type="number" id="fMinAge" placeholder="—" min="15" max="45" />
       </div>
       <div class="filter-group">
-        <label>MAX YAŞ</label>
+        <label>MAX AGE</label>
         <input type="number" id="fMaxAge" placeholder="—" min="15" max="45" />
       </div>
       <div class="filter-group">
-        <label>SONUÇ SAYISI</label>
+        <label>RESULTS</label>
         <select id="fTopN">
           <option value="5">5</option>
           <option value="10" selected>10</option>
@@ -490,7 +489,7 @@
     </div>
 
     <div class="quick-filters">
-      <span class="qf-label">HIZLI:</span>
+      <span class="qf-label">QUICK:</span>
       <button class="qf-btn" data-nation="Turkey">
         <img src="https://flagcdn.com/16x12/tr.png" class="qf-flag" alt=""> TR
       </button>
@@ -520,33 +519,33 @@
   </div>
 
   <div id="error"></div>
-  <div id="loading"><div class="scan-text">TARANYOR...</div><div class="scan-bar"></div></div>
+  <div id="loading"><div class="scan-text">SCANNING...</div><div class="scan-bar"></div></div>
 
   <div id="targetHeader"></div>
 
   <div class="legend" id="legend" style="display:none">
-    <span class="legend-label">BENZERLİK:</span>
-    <div class="legend-item"><div class="legend-dot" style="background:#00ff87"></div><span class="legend-text">Mükemmel (85+)</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div><span class="legend-text">Çok İyi (70+)</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#facc15"></div><span class="legend-text">İyi (55+)</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div><span class="legend-text">Orta (40+)</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div><span class="legend-text">Düşük</span></div>
-    <span class="legend-label" style="margin-left:8px">TIKLAYARAK DETAY GÖR</span>
+    <span class="legend-label">SIMILARITY:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#00ff87"></div><span class="legend-text">Perfect (85+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div><span class="legend-text">Very Good (70+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#facc15"></div><span class="legend-text">Good (55+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div><span class="legend-text">Average (40+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div><span class="legend-text">Low</span></div>
+    <span class="legend-label" style="margin-left:8px">CLICK TO EXPAND</span>
   </div>
 
   <div id="resultsGrid"></div>
 
   <div class="empty-state" id="emptyState">
     <div class="empty-icon">🔍</div>
-    <div class="empty-title">OYUNCU ARA</div>
-    <div class="empty-sub">Benzer oyuncuları bulmak için yukarıya isim yaz</div>
+    <div class="empty-title">SEARCH PLAYER</div>
+    <div class="empty-sub">Type a name above to find similar players</div>
   </div>
 </main>
 
 <footer>
   <p>
-    EA FC 26 verileri kullanılmaktadır · Pozisyona özel ağırlıklı Euclidean benzerlik algoritması ·
-    <a href="https://github.com/ssemiih/fc-scout-ai" target="_blank">GitHub'da görüntüle</a>
+    Powered by EA FC 26 data · Position-specific weighted Euclidean similarity algorithm ·
+    <a href="https://github.com/ssemiih/fc-scout-ai" target="_blank">View on GitHub</a>
   </p>
 </footer>
 
@@ -674,7 +673,7 @@ function styleBonus(targetStyleMap, candidateStyles) {
 function getRecommendations(playerName, opts={}) {
   const {minAge,maxAge,filterPos,filterNation,filterLeague,topN=10} = opts;
   const idx = DB.findIndex(r => r.n.toLowerCase() === playerName.toLowerCase());
-  if (idx === -1) return {error:`"${playerName}" oyuncu bulunamadı.`};
+  if (idx === -1) return {error:`Player "${playerName}" not found.`};
 
   const target  = DB[idx];
   const tScaled = scaledDB[idx];
@@ -759,11 +758,11 @@ function flagCode(nation) { return nationCodes[nation] || "un"; }
 function flagUrl(nation)  { return `https://flagcdn.com/16x12/${flagCode(nation)}.png`; }
 
 function simColor(sim) {
-  if (sim >= 85) return {bg:"#00ff87",text:"#0a0a0a",label:"Mükemmel"};
-  if (sim >= 70) return {bg:"#4ade80",text:"#0a0a0a",label:"Çok İyi"};
-  if (sim >= 55) return {bg:"#facc15",text:"#0a0a0a",label:"İyi"};
-  if (sim >= 40) return {bg:"#fb923c",text:"#0a0a0a",label:"Orta"};
-  return {bg:"#f87171",text:"#0a0a0a",label:"Düşük"};
+  if (sim >= 85) return {bg:"#00ff87",text:"#0a0a0a",label:"Perfect"};
+  if (sim >= 70) return {bg:"#4ade80",text:"#0a0a0a",label:"Very Good"};
+  if (sim >= 55) return {bg:"#facc15",text:"#0a0a0a",label:"Good"};
+  if (sim >= 40) return {bg:"#fb923c",text:"#0a0a0a",label:"Average"};
+  return {bg:"#f87171",text:"#0a0a0a",label:"Low"};
 }
 
 function statBarColor(v) {
@@ -808,7 +807,7 @@ function renderTargetPlayer(target) {
             <img src="${flagUrl(target.nat)}" alt="${target.nat}" style="height:11px;border-radius:1px;margin-right:4px;vertical-align:middle" onerror="this.style.display='none'">
             ${target.nat} · ${target.tm} · ${target.lea}
           </div>
-          <div class="target-sub">Yaş: ${target.age} · Ayak: ${target.pf} · WF: ${target.wf}★ · SM: ${target.sm}★</div>
+          <div class="target-sub">Age: ${target.age} · Foot: ${target.pf} · WF: ${target.wf}★ · SM: ${target.sm}★</div>
           <div class="key-stats">
             ${keyStats.map(s=>`
               <div class="key-stat">
@@ -854,7 +853,7 @@ function renderCard(item, idx) {
       </div>
       <div class="card-header">
         ${row.card
-          ? `<img src="${row.card}" class="card-img" alt="${row.n}" onerror="this.style.display='none;this.nextSibling.style.display=flex'">`
+          ? `<img src="${row.card}" class="card-img" alt="${row.n}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
           : `<div class="card-img-placeholder">⚽</div>`
         }
         <div style="flex:1;min-width:0">
@@ -877,9 +876,9 @@ function renderCard(item, idx) {
       </div>
       <div class="card-bottom">
         <div class="card-info">
-          <span>Yaş: <b>${row.age}</b></span>
-          <span>Ayak: <b>${row.pf}</b></span>
-          ${shared > 0 ? `<span class="shared-badge">${shared} ortak stil</span>` : ""}
+          <span>Age: <b>${row.age}</b></span>
+          <span>Foot: <b>${row.pf}</b></span>
+          ${shared > 0 ? `<span class="shared-badge">${shared} shared styles</span>` : ""}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="sim-label" style="color:${sc.bg}">${sc.label}</span>
@@ -963,7 +962,7 @@ function doSearch() {
     const grid = document.getElementById("resultsGrid");
     grid.innerHTML = res.results.length
       ? res.results.map((item,i) => renderCard(item,i)).join("")
-      : `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--faint)">Filtrelere uyan oyuncu bulunamadı.</div>`;
+      : `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--faint)">No players found matching the filters.</div>`;
   }, 10);
 }
 
@@ -1016,12 +1015,12 @@ async function loadData() {
 
     document.getElementById("scoutBtn").disabled = false;
     const badge = document.getElementById("playerCount");
-    badge.textContent = "✓ " + DB.length.toLocaleString("tr") + " oyuncu";
+    badge.textContent = "✓ " + DB.length.toLocaleString("en-US") + " players";
     badge.style.display = "inline";
   } catch (err) {
     console.error("Data load error:", err);
     const e = document.getElementById("error");
-    e.textContent = "❌ Veri yüklenemedi: " + err.message;
+    e.textContent = "❌ Data failed to load: " + err.message;
     e.classList.add("visible");
   }
 }

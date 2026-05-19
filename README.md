@@ -3,7 +3,7 @@
 > EA FC 26 oyuncuları arasında **pozisyona özel ağırlıklı benzerlik analizi** yapan scouting aracı.  
 > 14,412 oyuncu · Saf HTML/CSS/JS · Sıfır bağımlılık · GitHub Pages'de çalışır
 
-**[🔴 Canlı Demo](https://YOUR_USERNAME.github.io/fc-scout-ai)**
+**[🔴 Canlı Demo](https://ssemiih.github.io/fc-scout-ai)**
 
 ---
 

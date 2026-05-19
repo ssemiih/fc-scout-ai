@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FC Scout AI – Player Similarity Engine</title>
+  <meta name="description" content="EA FC 26 oyuncuları arasında benzerlik analizi yapan scouting aracı." />
+  <meta property="og:title" content="FC Scout AI" />
+  <meta property="og:description" content="EA FC 26 Player Similarity Engine" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #070a0f;
+      --surface:   #0d1117;
+      --surface2:  #161b22;
+      --border:    #21262d;
+      --border2:   #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --faint:     #3d444d;
+      --green:     #00ff87;
+      --cyan:      #00d4ff;
+      --gold:      #ffd700;
+      --red:       #f85149;
+      --yellow:    #e3b341;
+      --orange:    #fb923c;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID BG ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,255,135,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,135,.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(7,10,15,.96);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(0,255,135,.12);
+      padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .logo-text { font-family: 'Orbitron', monospace; font-weight: 800; font-size: 14px;
+      letter-spacing: 2px; background: linear-gradient(90deg,var(--green),var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo-sub { color: var(--faint); font-size: 9px; letter-spacing: 1.5px; margin-top: 1px; }
+
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    .badge-count {
+      background: #0f2a1a; color: #4ade80; font-size: 10px;
+      font-family: monospace; padding: 3px 9px; border-radius: 5px;
+      border: 1px solid rgba(74,222,128,.25);
+    }
+    .btn-gh {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 7px; padding: 6px 12px; color: var(--muted);
+      text-decoration: none; font-size: 11px; font-family: monospace;
+      transition: all .2s;
+    }
+    .btn-gh:hover { color: var(--text); border-color: var(--border2); background: #21262d; }
+    .btn-gh svg { flex-shrink: 0; }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 960px; margin: 0 auto;
+      padding: 22px 16px 60px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center; padding: 40px 20px 32px;
+      display: none; /* shown only before results */
+    }
+    .hero.visible { display: block; }
+    .hero h1 {
+      font-family: 'Orbitron', monospace; font-size: clamp(22px,5vw,40px);
+      font-weight: 900; letter-spacing: 3px;
+      background: linear-gradient(135deg, var(--green), var(--cyan), var(--green));
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .hero p { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+    /* ── SEARCH CARD ── */
+    .search-card {
+      background: linear-gradient(135deg, var(--surface), var(--surface2));
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px; margin-bottom: 20px;
+    }
+
+    .search-row { position: relative; margin-bottom: 14px; }
+    #searchInput {
+      width: 100%; background: #0a0a14; border: 1px solid var(--border);
+      border-radius: 9px; padding: 12px 90px 12px 42px;
+      color: var(--text); font-size: 14px; font-family: 'Rajdhani', sans-serif;
+      outline: none; transition: border-color .2s;
+    }
+    #searchInput:focus { border-color: rgba(0,255,135,.35); }
+    #searchInput::placeholder { color: var(--faint); }
+    .search-icon {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      color: var(--faint); font-size: 15px; pointer-events: none;
+    }
+    #scoutBtn {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      color: #0a0a0a; border: none; border-radius: 7px;
+      padding: 7px 16px; font-size: 11px; font-weight: 700;
+      font-family: 'Orbitron', monospace; cursor: pointer; letter-spacing: 1px;
+      transition: opacity .2s;
+    }
+    #scoutBtn:hover { opacity: .9; }
+    #scoutBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* autocomplete */
+    #suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 300;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 9px; overflow: hidden; margin-top: 4px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.85);
+      display: none;
+    }
+    #suggestions.open { display: block; }
+    .sugg-item {
+      padding: 9px 14px; cursor: pointer; font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sugg-item:last-child { border-bottom: none; }
+    .sugg-item:hover { background: var(--surface2); }
+    .sugg-pos {
+      font-size: 9px; font-weight: 700; padding: 1px 5px;
+      border-radius: 3px; font-family: monospace; flex-shrink: 0;
+    }
+    .sugg-team { color: var(--faint); font-size: 11px; margin-left: auto; }
+
+    /* ── FILTERS ── */
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px; margin-bottom: 12px;
+    }
+    .filter-group label {
+      color: var(--faint); font-size: 9px; display: block;
+      margin-bottom: 4px; font-family: monospace; letter-spacing: .5px;
+    }
+    .filter-group select,
+    .filter-group input {
+      width: 100%; background: #0a0a14; border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 8px; color: var(--muted);
+      font-size: 11px; font-family: 'Rajdhani', sans-serif; outline: none;
+      transition: border-color .2s; appearance: none;
+    }
+    .filter-group select:focus,
+    .filter-group input:focus { border-color: rgba(0,255,135,.3); }
+
+    .quick-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .qf-label { color: var(--faint); font-size: 9px; font-family: monospace; }
+    .qf-btn {
+      background: #0a0a14; color: var(--faint);
+      border: 1px solid var(--border); border-radius: 5px;
+      padding: 3px 9px; font-size: 10px; cursor: pointer;
+      font-family: monospace; display: flex; align-items: center; gap: 4px;
+      transition: all .15s;
+    }
+    .qf-btn:hover, .qf-btn.active {
+      background: #0f2a1a; color: #4ade80; border-color: rgba(74,222,128,.3);
+    }
+    .qf-flag { height: 9px; border-radius: 1px; }
+
+    /* ── LOADING ── */
+    #loading { text-align: center; padding: 60px; display: none; }
+    #loading.visible { display: block; }
+    .scan-text {
+      font-family: 'Orbitron', monospace; color: var(--green);
+      font-size: 13px; letter-spacing: 3px;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .scan-bar {
+      width: 200px; height: 2px; background: var(--border);
+      border-radius: 2px; margin: 14px auto 0;
+      overflow: hidden;
+    }
+    .scan-bar::after {
+      content: ''; display: block; height: 100%;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      animation: scan 1.2s linear infinite;
+    }
+    @keyframes scan { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+
+    /* ── ERROR ── */
+    #error { display: none; }
+    #error.visible {
+      display: block; background: #1a0a0a;
+      border: 1px solid rgba(248,81,73,.4); border-radius: 9px;
+      padding: 12px 16px; color: var(--red); font-size: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* ── TARGET PLAYER HEADER ── */
+    #targetHeader { margin-bottom: 20px; display: none; }
+    #targetHeader.visible { display: block; }
+    .target-card {
+      background: linear-gradient(135deg, #0f172a, #1e1b4b 50%, #0f172a);
+      border: 1px solid rgba(99,102,241,.3);
+      border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden;
+    }
+    .target-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 15% 50%, rgba(99,102,241,.15) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .target-inner { display: flex; align-items: flex-start; gap: 14px; position: relative; }
+    .target-card-img { width: 62px; height: 78px; object-fit: contain; flex-shrink: 0; }
+    .target-card-img.no-img {
+      background: var(--surface); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 28px;
+    }
+    .target-name {
+      font-family: 'Orbitron', monospace; font-size: clamp(15px,3vw,22px);
+      font-weight: 800; color: var(--text);
+    }
+    .target-meta { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .target-sub { color: var(--faint); font-size: 10px; margin-top: 2px; }
+    .key-stats { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .key-stat {
+      background: var(--surface); border-radius: 7px;
+      padding: 6px 10px; text-align: center; min-width: 44px;
+    }
+    .key-stat-label { color: var(--faint); font-size: 8px; font-family: monospace; margin-bottom: 2px; }
+    .key-stat-val {
+      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 14px; color: var(--text);
+    }
+    .key-stat-val.ovr { color: var(--green); }
+
+    /* ── LEGEND ── */
+    .legend {
+      display: flex; gap: 10px; margin-bottom: 12px;
+      flex-wrap: wrap; align-items: center;
+    }
+    .legend-label { color: var(--faint); font-size: 9px; font-family: monospace; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .legend-text { color: var(--faint); font-size: 9px; }
+
+    /* ── RESULTS GRID ── */
+    #resultsGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 10px;
+    }
+
+    /* ── PLAYER CARD ── */
+    .player-card {
+      background: linear-gradient(135deg, var(--surface), var(--surface2));
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: border-color .2s, transform .15s;
+      animation: fadeInUp .35s ease both;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .player-card:hover { transform: translateY(-2px); }
+    .player-card.expanded { border-color: var(--expand-color, #00ff87) !important; }
+
+    .sim-badge {
+      position: absolute; top: 10px; right: 12px;
+      border-radius: 50%; width: 38px; height: 38px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: 'Orbitron', monospace; font-weight: 700;
+      font-size: 11px; line-height: 1; flex-shrink: 0;
+    }
+
+    .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .card-img { width: 40px; height: 50px; object-fit: contain; flex-shrink: 0; }
+    .card-img-placeholder {
+      width: 40px; height: 50px; background: var(--surface);
+      border-radius: 4px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .card-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+    .card-name { font-family: 'Orbitron', monospace; font-weight: 700; font-size: 12.5px; color: var(--text); letter-spacing: .3px; }
+    .pos-badge {
+      font-size: 8px; font-weight: 700; padding: 1px 6px;
+      border-radius: 4px; font-family: monospace;
+      color: #000; flex-shrink: 0;
+    }
+    .card-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .flag { height: 10px; border-radius: 1px; }
+    .card-nation { color: var(--muted); font-size: 10px; }
+    .card-team  { color: #aaa; font-size: 10px; }
+    .card-league { color: var(--faint); font-size: 10px; }
+    .card-sep { color: var(--border2); font-size: 10px; }
+
+    /* mini stats row */
+    .mini-stats { display: flex; gap: 5px; margin-bottom: 8px; }
+    .mini-stat {
+      flex: 1; text-align: center;
+      background: #0a0a14; border-radius: 4px; padding: 3px 2px;
+    }
+    .mini-stat-lbl { color: var(--faint); font-size: 7.5px; font-family: monospace; }
+    .mini-stat-val {
+      color: var(--text); font-family: 'Orbitron', monospace;
+      font-weight: 600; font-size: 11px;
+    }
+
+    /* bottom row */
+    .card-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .card-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .card-info span { color: var(--faint); font-size: 10px; }
+    .card-info span b { color: var(--muted); }
+    .shared-badge {
+      background: #1e3a2e; color: #4ade80;
+      border-radius: 3px; padding: 1px 6px; font-size: 9px;
+    }
+    .sim-label { font-size: 9px; font-weight: 600; }
+    .expand-hint { color: var(--faint); font-size: 9px; }
+
+    /* expanded detail */
+    .card-detail {
+      margin-top: 12px; border-top: 1px solid var(--border);
+      padding-top: 10px; display: none;
+    }
+    .card-detail.open { display: block; }
+    .stats-detail {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
+      margin-bottom: 10px;
+    }
+    .stat-row { display: flex; align-items: center; gap: 5px; font-size: 10px; }
+    .stat-name { color: var(--faint); width: 88px; flex-shrink: 0; font-family: monospace; font-size: 9px; }
+    .stat-bar-bg { flex: 1; background: #1a1a2e; border-radius: 2px; height: 4px; overflow: hidden; }
+    .stat-bar-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+    .stat-val { color: var(--muted); width: 22px; text-align: right; font-family: monospace; font-size: 10px; }
+
+    .styles-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .style-tag {
+      border-radius: 4px; padding: 2px 7px; font-size: 8.5px; font-family: monospace;
+    }
+    .style-tag.gold { background: #2a1f00; color: #ffd700; border: 1px solid rgba(255,215,0,.25); }
+    .style-tag.silver { background: #1a1a2e; color: var(--faint); border: 1px solid var(--border); }
+
+    /* ── EMPTY STATE ── */
+    #emptyState { text-align: center; padding: 80px 20px; display: none; }
+    #emptyState.visible { display: block; }
+    .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-title { font-family: 'Orbitron', monospace; font-size: 14px; letter-spacing: 2px; color: var(--faint); }
+    .empty-sub { font-size: 11px; color: #2a2a3e; margin-top: 8px; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center; padding: 20px;
+      color: var(--faint); font-size: 10px; font-family: monospace;
+      border-top: 1px solid var(--border); position: relative; z-index: 1;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── POSITION COLORS ── */
+    .pos-ST,.pos-CF { background: #ef4444; }
+    .pos-LW,.pos-RW { background: #f97316; }
+    .pos-LM,.pos-RM { background: #fb923c; }
+    .pos-CAM { background: #eab308; }
+    .pos-CM  { background: #22c55e; }
+    .pos-CDM { background: #16a34a; }
+    .pos-LB,.pos-RB { background: #3b82f6; }
+    .pos-CB  { background: #2563eb; }
+    .pos-GK  { background: #8b5cf6; }
+
+    input[type=number]::-webkit-inner-spin-button { opacity: .5; }
+    select { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">FC SCOUT AI</div>
+      <div class="logo-sub">PLAYER SIMILARITY ENGINE · EA FC 26</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge-count" id="playerCount" style="display:none"></span>
+    <a href="https://github.com/YOUR_USERNAME/fc-scout-ai" target="_blank" class="btn-gh" id="ghLink">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="hero visible" id="hero">
+    <h1>FC SCOUT AI</h1>
+    <p>EA FC 26 · 14,412 oyuncu · Pozisyona özel ağırlıklı benzerlik analizi</p>
+  </div>
+
+  <!-- Search + Filters -->
+  <div class="search-card">
+    <div class="search-row">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Oyuncu ara... (örn: Erling Haaland, Ferdi Kadıoğlu)" autocomplete="off" />
+      <button id="scoutBtn" disabled>SCOUT</button>
+      <div id="suggestions"></div>
+    </div>
+
+    <div class="filters-grid">
+      <div class="filter-group">
+        <label>MİLLİYET</label>
+        <select id="fNation"><option value="">Tümü</option></select>
+      </div>
+      <div class="filter-group">
+        <label>LİG</label>
+        <select id="fLeague"><option value="">Tümü</option></select>
+      </div>
+      <div class="filter-group">
+        <label>POZİSYON</label>
+        <select id="fPos">
+          <option value="">Tümü</option>
+          <option value="SAME">Aynı Mevki</option>
+          <option value="ST">ST</option><option value="CF">CF</option>
+          <option value="LW">LW</option><option value="RW">RW</option>
+          <option value="LM">LM</option><option value="RM">RM</option>
+          <option value="CAM">CAM</option><option value="CM">CM</option>
+          <option value="CDM">CDM</option>
+          <option value="LB">LB</option><option value="RB">RB</option>
+          <option value="CB">CB</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>MIN YAŞ</label>
+        <input type="number" id="fMinAge" placeholder="—" min="15" max="45" />
+      </div>
+      <div class="filter-group">
+        <label>MAX YAŞ</label>
+        <input type="number" id="fMaxAge" placeholder="—" min="15" max="45" />
+      </div>
+      <div class="filter-group">
+        <label>SONUÇ SAYISI</label>
+        <select id="fTopN">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="quick-filters">
+      <span class="qf-label">HIZLI:</span>
+      <button class="qf-btn" data-nation="Turkey">
+        <img src="https://flagcdn.com/16x12/tr.png" class="qf-flag" alt=""> TR
+      </button>
+      <button class="qf-btn" data-nation="France">
+        <img src="https://flagcdn.com/16x12/fr.png" class="qf-flag" alt=""> FR
+      </button>
+      <button class="qf-btn" data-nation="Germany">
+        <img src="https://flagcdn.com/16x12/de.png" class="qf-flag" alt=""> DE
+      </button>
+      <button class="qf-btn" data-nation="England">
+        <img src="https://flagcdn.com/16x12/gb-eng.png" class="qf-flag" alt=""> ENG
+      </button>
+      <button class="qf-btn" data-nation="Spain">
+        <img src="https://flagcdn.com/16x12/es.png" class="qf-flag" alt=""> ES
+      </button>
+      <button class="qf-btn" data-nation="Brazil">
+        <img src="https://flagcdn.com/16x12/br.png" class="qf-flag" alt=""> BR
+      </button>
+      <button class="qf-btn" data-nation="Argentina">
+        <img src="https://flagcdn.com/16x12/ar.png" class="qf-flag" alt=""> ARG
+      </button>
+      <button class="qf-btn" data-nation="Portugal">
+        <img src="https://flagcdn.com/16x12/pt.png" class="qf-flag" alt=""> PT
+      </button>
+      <button class="qf-btn" data-age="23" id="qfYoung">🌱 U23</button>
+    </div>
+  </div>
+
+  <div id="error"></div>
+  <div id="loading"><div class="scan-text">TARANYOR...</div><div class="scan-bar"></div></div>
+
+  <div id="targetHeader"></div>
+
+  <div class="legend" id="legend" style="display:none">
+    <span class="legend-label">BENZERLİK:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#00ff87"></div><span class="legend-text">Mükemmel (85+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div><span class="legend-text">Çok İyi (70+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#facc15"></div><span class="legend-text">İyi (55+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div><span class="legend-text">Orta (40+)</span></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div><span class="legend-text">Düşük</span></div>
+    <span class="legend-label" style="margin-left:8px">TIKLAYARAK DETAY GÖR</span>
+  </div>
+
+  <div id="resultsGrid"></div>
+
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">🔍</div>
+    <div class="empty-title">OYUNCU ARA</div>
+    <div class="empty-sub">Benzer oyuncuları bulmak için yukarıya isim yaz</div>
+  </div>
+</main>
+
+<footer>
+  <p>
+    EA FC 26 verileri kullanılmaktadır · Pozisyona özel ağırlıklı Euclidean benzerlik algoritması ·
+    <a href="https://github.com/YOUR_USERNAME/fc-scout-ai" target="_blank">GitHub'da görüntüle</a>
+  </p>
+</footer>
+
+<script>
+// ============================================================
+// KEY MAP (compact JSON → readable keys)
+// ============================================================
+const K = {
+  id:"id",name:"n",ovr:"ov",pac:"pa",sho:"sh",pas:"ps",dri:"dr",def:"df",phy:"ph",
+  acc:"ac",spr:"sp",pos:"po",fin:"fi",spw:"spw",ls:"ls",vol:"vo",pen:"pe",
+  vis:"vi",cro:"cr",fk:"fk",sps:"sps",lp:"lp",cur:"cu",dri2:"db",agi:"ag",bal:"ba",
+  rea:"re",bc:"bc",com:"co",inter:"in",hea:"ha",da:"da",st:"st",sl:"sl",
+  jum:"ju",sta:"sta",str:"str",agg:"agg",
+  position:"pos",wf:"wf",sm:"sm",pf:"pf",ht:"ht",wt:"wt",age:"age",
+  nat:"nat",lea:"lea",tm:"tm",sty:"sty",card:"card"
+};
+
+// Helper: get field from compact row
+function g(row, longKey) { return row[K[longKey]] ?? row[longKey] ?? ""; }
+
+// ============================================================
+// ALGORITHM
+// ============================================================
+const leagueTiers = {
+  "Premier League":1,"LALIGA EA SPORTS":1,"Ligue 1 McDonald's":1,"Bundesliga":1,"Serie A Enilive":1,
+  "Trendyol Süper Lig":2,"ROSHN Saudi League":2,"Liga Portugal":2,"LPF":2,"Eredivisie":2,
+  "1A Pro League":2,"EFL Championship":2,"Libertadores":2,"Sudamericana":2,
+  "MLS":3,"Liga Hrvatska":3,"Hellas Liga":3,"Scottish Prem":3,"United Emirates League":3,
+  "Česká Liga":3,"Ukrayina Liha":3,"Serie BKT":3,"Brack Super League":3,"Eliteserien":3,
+  "3F Superliga":3,"LALIGA HYPERMOTION":3,"Bundesliga 2":3,"Ligue 2 BKT":3,"K League 1":3,
+  "CSL":3,"Ö. Bundesliga":3,"Allsvenskan":3,"PKO BP Ekstraklasa":3,"Liga Chile":3,"A-League":3,
+  "Magyar Liga":4,"SUPERLIGA":4,"Liga Cyprus":4,"EFL League One":4,"Liga Azerbaijan":4,
+  "Finnliiga":4,"ISL":4,"3. Liga":4,"EFL League Two":4,"SSE Airtricity PD":4
+};
+
+const featureGroups = {
+  "Box Threat":       {cols:["po","fi","ha","pe"],  key:"Box Threat"},
+  "Distance Threat":  {cols:["ls","spw","vo"],       key:"Distance Threat"},
+  "Playmaking":       {cols:["sps","vi","cu"],        key:"Playmaking"},
+  "Service":          {cols:["cr","lp","fk"],         key:"Service"},
+  "Ball Carry":       {cols:["db","bc"],              key:"Ball Carry"},
+  "Agility":          {cols:["ag","ba","re","co"],    key:"Agility"},
+  "Ball Winning":     {cols:["st","sl","in"],         key:"Ball Winning"},
+  "Def Awareness":    {cols:["da"],                   key:"Def Awareness"},
+  "Speed":            {cols:["ac","sp"],              key:"Speed"},
+  "Physical":         {cols:["str","jum","agg","sta"],key:"Physical"}
+};
+
+const posWeights = {
+  ST:  {"Box Threat":.35,"Distance Threat":.08,"Speed":.12,"Physical":.15,"Ball Carry":.08,"Agility":.08,"Playmaking":.07,"Service":.02,"Ball Winning":.04,"Def Awareness":.01},
+  LW:  {"Speed":.25,"Ball Carry":.20,"Agility":.15,"Service":.15,"Box Threat":.07,"Distance Threat":.08,"Playmaking":.05,"Physical":.05,"Ball Winning":.0,"Def Awareness":.0},
+  RW:  {"Speed":.25,"Ball Carry":.20,"Agility":.15,"Service":.15,"Box Threat":.07,"Distance Threat":.08,"Playmaking":.05,"Physical":.05,"Ball Winning":.0,"Def Awareness":.0},
+  LM:  {"Speed":.20,"Ball Carry":.20,"Service":.20,"Playmaking":.10,"Agility":.10,"Box Threat":.05,"Distance Threat":.05,"Physical":.05,"Ball Winning":.05,"Def Awareness":.0},
+  RM:  {"Speed":.20,"Ball Carry":.20,"Service":.20,"Playmaking":.10,"Agility":.10,"Box Threat":.05,"Distance Threat":.05,"Physical":.05,"Ball Winning":.05,"Def Awareness":.0},
+  CAM: {"Playmaking":.30,"Ball Carry":.15,"Agility":.12,"Distance Threat":.18,"Box Threat":.07,"Service":.04,"Speed":.05,"Physical":.04,"Ball Winning":.04,"Def Awareness":.01},
+  CM:  {"Playmaking":.25,"Ball Winning":.15,"Physical":.15,"Agility":.08,"Service":.08,"Ball Carry":.10,"Def Awareness":.05,"Box Threat":.05,"Distance Threat":.05,"Speed":.04},
+  CDM: {"Ball Winning":.25,"Def Awareness":.15,"Physical":.25,"Playmaking":.12,"Service":.05,"Agility":.05,"Speed":.03,"Ball Carry":.04,"Box Threat":.01,"Distance Threat":.05},
+  LB:  {"Speed":.20,"Ball Winning":.20,"Service":.20,"Physical":.10,"Agility":.10,"Ball Carry":.10,"Def Awareness":.05,"Playmaking":.05,"Box Threat":.0,"Distance Threat":.0},
+  RB:  {"Speed":.20,"Ball Winning":.20,"Service":.20,"Physical":.10,"Agility":.10,"Ball Carry":.10,"Def Awareness":.05,"Playmaking":.05,"Box Threat":.0,"Distance Threat":.0},
+  CB:  {"Def Awareness":.29,"Ball Winning":.29,"Physical":.24,"Speed":.05,"Service":.04,"Playmaking":.04,"Ball Carry":.02,"Agility":.02,"Box Threat":.0,"Distance Threat":.01}
+};
+
+const allStatCols = [...new Set(Object.values(featureGroups).flatMap(g => g.cols))];
+const profileCols = ["age","ht","wt"];
+const scaleCols   = [...new Set([...allStatCols, ...profileCols])];
+
+let DB = null, scaledDB = null, scalerStats = null;
+let playerNames = [], nations = [], leagues = [];
+
+function parseStyles(raw) {
+  if (!raw || raw === "" || raw === "[]") return [];
+  try { return JSON.parse(raw.replace(/'/g,'"')); }
+  catch { return raw.replace(/[\[\]']/g,"").split(",").map(s=>s.trim()).filter(Boolean); }
+}
+
+function computeScalerStats(data) {
+  const stats = {};
+  for (const col of scaleCols) {
+    const vals = data.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+    const mean = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length) || 1;
+    stats[col] = {mean,std};
+  }
+  return stats;
+}
+
+function scaleDataset(data, stats) {
+  return data.map(row => {
+    const s = {};
+    for (const col of scaleCols) {
+      const v = parseFloat(row[col]);
+      s[col] = isNaN(v) ? 0 : (v - stats[col].mean) / stats[col].std;
+    }
+    return s;
+  });
+}
+
+function getFeatureWeights(pos) {
+  const pw = posWeights[pos] || posWeights["CM"];
+  const fw = {};
+  for (const [,{cols,key}] of Object.entries(featureGroups)) {
+    const w = pw[key] || 0;
+    const perF = w / cols.length;
+    for (const c of cols) fw[c] = (fw[c]||0) + perF;
+  }
+  fw["ht"] = 0.05; fw["wt"] = 0.05; fw["age"] = 0.05;
+  return fw;
+}
+
+function styleBonus(targetStyleMap, candidateStyles) {
+  if (!Array.isArray(candidateStyles)) return 0;
+  let score = 0;
+  const cMap = {};
+  for (const s of candidateStyles) cMap[s.replace("+","")] = s.endsWith("+")?"Gold":"Silver";
+  for (const [style, tTier] of Object.entries(targetStyleMap)) {
+    if (!cMap[style]) continue;
+    const cTier = cMap[style];
+    if (tTier==="Gold" && cTier==="Gold") score += 2.5;
+    else if (tTier==="Silver" && cTier==="Silver") score += 1.5;
+    else score += 1.0;
+  }
+  return score;
+}
+
+function getRecommendations(playerName, opts={}) {
+  const {minAge,maxAge,filterPos,filterNation,filterLeague,topN=10} = opts;
+  const idx = DB.findIndex(r => r.n.toLowerCase() === playerName.toLowerCase());
+  if (idx === -1) return {error:`"${playerName}" oyuncu bulunamadı.`};
+
+  const target  = DB[idx];
+  const tScaled = scaledDB[idx];
+  const tPos    = target.pos;
+  const tFoot   = target.pf;
+  const tWF     = parseInt(target.wf)||0;
+  const tSM     = parseInt(target.sm)||0;
+  const tStyles = parseStyles(target.sty);
+  const tStyleMap = {};
+  for (const s of tStyles) tStyleMap[s.replace("+","")] = s.endsWith("+")?"Gold":"Silver";
+
+  const fw   = getFeatureWeights(tPos);
+  const fwKeys = Object.keys(fw);
+  const tTier  = leagueTiers[target.lea] ?? 4;
+  const SHARP  = 15.0;
+
+  const results = [];
+  for (let i = 0; i < DB.length; i++) {
+    if (i === idx) continue;
+    const row = DB[i]; const rs = scaledDB[i];
+    if (minAge !== undefined && parseInt(row.age) < minAge) continue;
+    if (maxAge !== undefined && parseInt(row.age) > maxAge) continue;
+    if (filterPos === "SAME" && row.pos !== tPos) continue;
+    else if (filterPos && filterPos !== "SAME" && row.pos !== filterPos) continue;
+    if (filterNation && row.nat !== filterNation) continue;
+    if (filterLeague && row.lea !== filterLeague) continue;
+
+    let sum = 0;
+    for (const k of fwKeys) {
+      const d = ((tScaled[k]||0) - (rs[k]||0)) * (fw[k]||0);
+      sum += d*d;
+    }
+    const dist = Math.sqrt(sum);
+    const base = 100 * Math.exp(-dist*dist*SHARP);
+    const tierPen  = Math.abs((leagueTiers[row.lea]??4) - tTier) * 6.0;
+    const footB    = row.pf === tFoot ? 2.0 : -2.0;
+    const wfPen    = Math.abs((parseInt(row.wf)||0) - tWF) * 1.5;
+    const smPen    = Math.abs((parseInt(row.sm)||0) - tSM) * 1.5;
+    const cStyles  = parseStyles(row.sty);
+    const styleB   = styleBonus(tStyleMap, cStyles);
+
+    const score = Math.max(0, Math.min(100, base - tierPen + footB - wfPen - smPen + styleB));
+    const shared = Object.keys(tStyleMap).filter(s => cStyles.some(cs => cs.replace("+","")===s)).length;
+    results.push({row, score, shared, _styles: cStyles});
+  }
+
+  results.sort((a,b) => b.score - a.score);
+  return {target, targetIdx: idx, results: results.slice(0, topN)};
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+const nationCodes = {
+  "England":"gb-eng","Germany":"de","France":"fr","Spain":"es","Italy":"it",
+  "Brazil":"br","Argentina":"ar","Portugal":"pt","Netherlands":"nl","Belgium":"be",
+  "Turkey":"tr","Norway":"no","Sweden":"se","Denmark":"dk","Croatia":"hr",
+  "Poland":"pl","Austria":"at","Switzerland":"ch","Serbia":"rs","Slovenia":"si",
+  "Slovakia":"sk","Czech Republic":"cz","Hungary":"hu","Greece":"gr","Ukraine":"ua",
+  "Romania":"ro","Morocco":"ma","Senegal":"sn","Nigeria":"ng","Ghana":"gh",
+  "Egypt":"eg","Ivory Coast":"ci","Cameroon":"cm","Guinea":"gn","Mali":"ml",
+  "Algeria":"dz","Tunisia":"tn","Colombia":"co","Uruguay":"uy","Chile":"cl",
+  "Ecuador":"ec","Mexico":"mx","USA":"us","Canada":"ca","Japan":"jp",
+  "South Korea":"kr","Australia":"au","Saudi Arabia":"sa","Iran":"ir",
+  "Georgia":"ge","Albania":"al","Wales":"gb-wls","Scotland":"gb-sct",
+  "Republic of Ireland":"ie","Holland":"nl","Russia":"ru","China PR":"cn",
+  "China":"cn","Israel":"il","Burkina Faso":"bf","Congo":"cg","DR Congo":"cd",
+  "Cape Verde":"cv","Gabon":"ga","Togo":"tg","Guinea-Bissau":"gw","Zimbabwe":"zw",
+  "Iceland":"is","Finland":"fi","Kosovo":"xk","Montenegro":"me","North Macedonia":"mk",
+  "Bosnia and Herzegovina":"ba","Bulgaria":"bg","Lithuania":"lt","Latvia":"lv",
+  "Estonia":"ee","Cyprus":"cy","Luxembourg":"lu","UAE":"ae","Qatar":"qa",
+  "Jordan":"jo","Comoros":"km","Mauritania":"mr","Angola":"ao","Mozambique":"mz",
+  "Rwanda":"rw","Ethiopia":"et","Kenya":"ke","Uganda":"ug","Tanzania":"tz",
+  "Liberia":"lr","Sierra Leone":"sl","Libya":"ly","Sudan":"sd","Honduras":"hn",
+  "Guatemala":"gt","Panama":"pa","Jamaica":"jm","Trinidad and Tobago":"tt",
+  "Northern Ireland":"gb-nir","Moldova":"md","Kazakhstan":"kz","Azerbaijan":"az",
+  "Armenia":"am","Venezuela":"ve","Paraguay":"py","Peru":"pe","Bolivia":"bo",
+  "Costa Rica":"cr","Thailand":"th","Indonesia":"id","Vietnam":"vn","India":"in"
+};
+
+function flagCode(nation) { return nationCodes[nation] || "un"; }
+function flagUrl(nation)  { return `https://flagcdn.com/16x12/${flagCode(nation)}.png`; }
+
+function simColor(sim) {
+  if (sim >= 85) return {bg:"#00ff87",text:"#0a0a0a",label:"Mükemmel"};
+  if (sim >= 70) return {bg:"#4ade80",text:"#0a0a0a",label:"Çok İyi"};
+  if (sim >= 55) return {bg:"#facc15",text:"#0a0a0a",label:"İyi"};
+  if (sim >= 40) return {bg:"#fb923c",text:"#0a0a0a",label:"Orta"};
+  return {bg:"#f87171",text:"#0a0a0a",label:"Düşük"};
+}
+
+function statBarColor(v) {
+  const n = parseInt(v)||0;
+  if (n>=80) return "#00ff87";
+  if (n>=65) return "#4ade80";
+  if (n>=50) return "#facc15";
+  if (n>=35) return "#fb923c";
+  return "#f87171";
+}
+
+function posClass(pos) { return `pos-${pos}`; }
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderTargetPlayer(target) {
+  const el = document.getElementById("targetHeader");
+  const pos = target.pos;
+  const posCol = getComputedStyle(document.documentElement).getPropertyValue("--green") || "#00ff87";
+
+  const keyStats = [
+    {l:"OVR",v:target.ov,cls:"ovr"},
+    {l:"PAC",v:target.pa},{l:"SHO",v:target.sh},
+    {l:"PAS",v:target.ps},{l:"DRI",v:target.dr},
+    {l:"DEF",v:target.df},{l:"PHY",v:target.ph}
+  ];
+
+  el.innerHTML = `
+    <div class="target-card">
+      <div class="target-inner">
+        ${target.card
+          ? `<img src="${target.card}" class="target-card-img" alt="${target.n}" onerror="this.style.display='none'">`
+          : `<div class="target-card-img no-img">⚽</div>`
+        }
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span class="target-name">${target.n}</span>
+            <span class="pos-badge ${posClass(pos)}" style="font-size:9px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:monospace;color:#000">${pos}</span>
+          </div>
+          <div class="target-meta">
+            <img src="${flagUrl(target.nat)}" alt="${target.nat}" style="height:11px;border-radius:1px;margin-right:4px;vertical-align:middle" onerror="this.style.display='none'">
+            ${target.nat} · ${target.tm} · ${target.lea}
+          </div>
+          <div class="target-sub">Yaş: ${target.age} · Ayak: ${target.pf} · WF: ${target.wf}★ · SM: ${target.sm}★</div>
+          <div class="key-stats">
+            ${keyStats.map(s=>`
+              <div class="key-stat">
+                <div class="key-stat-label">${s.l}</div>
+                <div class="key-stat-val ${s.cls||''}">${s.v||"—"}</div>
+              </div>`).join("")}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  el.classList.add("visible");
+}
+
+function renderCard(item, idx) {
+  const {row, score, shared, _styles} = item;
+  const sc = simColor(score);
+  const pos = row.pos;
+  const delay = idx * 55;
+
+  const miniStats = [
+    {l:"PAC",v:row.pa},{l:"SHO",v:row.sh},{l:"PAS",v:row.ps},
+    {l:"DRI",v:row.dr},{l:"DEF",v:row.df},{l:"PHY",v:row.ph}
+  ];
+
+  const detailStats = [
+    ["Acceleration",row.ac],["Sprint Speed",row.sp],
+    ["Finishing",row.fi],["Shot Power",row.spw],
+    ["Short Pass",row.sps],["Vision",row.vi],
+    ["Dribbling",row.db],["Ball Control",row.bc],
+    ["Standing Tackle",row.st],["Def Awareness",row.da],
+    ["Strength",row.str],["Stamina",row.sta],
+    ["Agility",row.ag],["Composure",row.co]
+  ];
+
+  const stylesHtml = _styles.length ? _styles.map(s =>
+    `<span class="style-tag ${s.endsWith("+")?"gold":"silver"}">${s}</span>`
+  ).join("") : '<span style="color:var(--faint);font-size:10px">—</span>';
+
+  return `
+    <div class="player-card" data-idx="${idx}" style="animation-delay:${delay}ms;--expand-color:${sc.bg}" onclick="toggleCard(${idx})">
+      <div class="sim-badge" style="background:${sc.bg};color:${sc.text}">
+        ${score.toFixed(0)}
+      </div>
+      <div class="card-header">
+        ${row.card
+          ? `<img src="${row.card}" class="card-img" alt="${row.n}" onerror="this.style.display='none;this.nextSibling.style.display=flex'">`
+          : `<div class="card-img-placeholder">⚽</div>`
+        }
+        <div style="flex:1;min-width:0">
+          <div class="card-name-row">
+            <span class="card-name">${row.n}</span>
+            <span class="pos-badge ${posClass(pos)}">${pos}</span>
+          </div>
+          <div class="card-sub">
+            <img src="${flagUrl(row.nat)}" class="flag" alt="${row.nat}" onerror="this.style.display='none'">
+            <span class="card-nation">${row.nat}</span>
+            <span class="card-sep">·</span>
+            <span class="card-team">${row.tm}</span>
+            <span class="card-sep">·</span>
+            <span class="card-league">${row.lea}</span>
+          </div>
+        </div>
+      </div>
+      <div class="mini-stats">
+        ${miniStats.map(s=>`<div class="mini-stat"><div class="mini-stat-lbl">${s.l}</div><div class="mini-stat-val">${s.v||"—"}</div></div>`).join("")}
+      </div>
+      <div class="card-bottom">
+        <div class="card-info">
+          <span>Yaş: <b>${row.age}</b></span>
+          <span>Ayak: <b>${row.pf}</b></span>
+          ${shared > 0 ? `<span class="shared-badge">${shared} ortak stil</span>` : ""}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="sim-label" style="color:${sc.bg}">${sc.label}</span>
+          <span class="expand-hint" id="hint-${idx}">▼</span>
+        </div>
+      </div>
+      <div class="card-detail" id="detail-${idx}">
+        <div class="stats-detail">
+          ${detailStats.map(([label,val])=>{
+            const v = parseInt(val)||0;
+            return `<div class="stat-row">
+              <span class="stat-name">${label}</span>
+              <div class="stat-bar-bg">
+                <div class="stat-bar-fill" style="width:${v}%;background:${statBarColor(v)}"></div>
+              </div>
+              <span class="stat-val">${v||"—"}</span>
+            </div>`;
+          }).join("")}
+        </div>
+        <div class="styles-list">${stylesHtml}</div>
+      </div>
+    </div>`;
+}
+
+let expandedIdx = null;
+function toggleCard(idx) {
+  if (expandedIdx !== null && expandedIdx !== idx) {
+    const old = document.getElementById(`detail-${expandedIdx}`);
+    const oldCard = document.querySelector(`[data-idx="${expandedIdx}"]`);
+    const oldHint = document.getElementById(`hint-${expandedIdx}`);
+    if (old) old.classList.remove("open");
+    if (oldCard) oldCard.classList.remove("expanded");
+    if (oldHint) oldHint.textContent = "▼";
+  }
+  const detail = document.getElementById(`detail-${idx}`);
+  const card   = document.querySelector(`[data-idx="${idx}"]`);
+  const hint   = document.getElementById(`hint-${idx}`);
+  if (!detail) return;
+  const isOpen = detail.classList.contains("open");
+  detail.classList.toggle("open", !isOpen);
+  card.classList.toggle("expanded", !isOpen);
+  if (hint) hint.textContent = isOpen ? "▼" : "▲";
+  expandedIdx = isOpen ? null : idx;
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function doSearch() {
+  const query = document.getElementById("searchInput").value.trim();
+  if (!DB || !query) return;
+
+  const minAge     = document.getElementById("fMinAge").value ? parseInt(document.getElementById("fMinAge").value) : undefined;
+  const maxAge     = document.getElementById("fMaxAge").value ? parseInt(document.getElementById("fMaxAge").value) : undefined;
+  const filterPos  = document.getElementById("fPos").value || undefined;
+  const filterNat  = document.getElementById("fNation").value || undefined;
+  const filterLea  = document.getElementById("fLeague").value || undefined;
+  const topN       = parseInt(document.getElementById("fTopN").value) || 10;
+
+  document.getElementById("loading").classList.add("visible");
+  document.getElementById("error").classList.remove("visible");
+  document.getElementById("targetHeader").classList.remove("visible");
+  document.getElementById("resultsGrid").innerHTML = "";
+  document.getElementById("legend").style.display = "none";
+  document.getElementById("hero").classList.remove("visible");
+  expandedIdx = null;
+
+  setTimeout(() => {
+    const res = getRecommendations(query, {minAge,maxAge,filterPos,filterNation:filterNat,filterLeague:filterLea,topN});
+    document.getElementById("loading").classList.remove("visible");
+
+    if (res.error) {
+      const el = document.getElementById("error");
+      el.textContent = "❌ " + res.error;
+      el.classList.add("visible");
+      return;
+    }
+
+    renderTargetPlayer(res.target);
+    document.getElementById("legend").style.display = "flex";
+    const grid = document.getElementById("resultsGrid");
+    grid.innerHTML = res.results.length
+      ? res.results.map((item,i) => renderCard(item,i)).join("")
+      : `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--faint)">Filtrelere uyan oyuncu bulunamadı.</div>`;
+  }, 10);
+}
+
+// ============================================================
+// AUTOCOMPLETE
+// ============================================================
+function updateSuggestions(val) {
+  const box = document.getElementById("suggestions");
+  if (val.length < 2 || !DB) { box.classList.remove("open"); return; }
+  const lo = val.toLowerCase();
+  const matches = DB
+    .filter(r => r.n.toLowerCase().includes(lo))
+    .slice(0, 8);
+  if (!matches.length) { box.classList.remove("open"); return; }
+  box.innerHTML = matches.map(r => `
+    <div class="sugg-item" onclick="selectSuggestion('${r.n.replace(/'/,"\\'")}')" >
+      <span class="pos-badge ${posClass(r.pos)} sugg-pos">${r.pos}</span>
+      <span>${r.n}</span>
+      <span class="sugg-team">${r.tm}</span>
+    </div>`).join("");
+  box.classList.add("open");
+}
+
+function selectSuggestion(name) {
+  document.getElementById("searchInput").value = name;
+  document.getElementById("suggestions").classList.remove("open");
+  document.getElementById("searchInput").focus();
+}
+
+// ============================================================
+// BOOT — load data.json
+// ============================================================
+async function loadData() {
+  try {
+    const resp = await fetch("data/players.json");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    DB = await resp.json();
+    scalerStats = computeScalerStats(DB);
+    scaledDB    = scaleDataset(DB, scalerStats);
+
+    // populate filters
+    nations = [...new Set(DB.map(r=>r.nat).filter(Boolean))].sort();
+    leagues = [...new Set(DB.map(r=>r.lea).filter(Boolean))].sort();
+
+    const natSel = document.getElementById("fNation");
+    nations.forEach(n => { const o=document.createElement("option"); o.value=o.textContent=n; natSel.appendChild(o); });
+
+    const leaSel = document.getElementById("fLeague");
+    leagues.forEach(l => { const o=document.createElement("option"); o.value=o.textContent=l; leaSel.appendChild(o); });
+
+    document.getElementById("scoutBtn").disabled = false;
+    const badge = document.getElementById("playerCount");
+    badge.textContent = "✓ " + DB.length.toLocaleString("tr") + " oyuncu";
+    badge.style.display = "inline";
+  } catch (err) {
+    console.error("Data load error:", err);
+    const e = document.getElementById("error");
+    e.textContent = "❌ Veri yüklenemedi: " + err.message;
+    e.classList.add("visible");
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+
+  const input = document.getElementById("searchInput");
+  input.addEventListener("input",  e => updateSuggestions(e.target.value));
+  input.addEventListener("keydown", e => { if (e.key==="Enter") doSearch(); });
+  input.addEventListener("blur",    () => setTimeout(()=>document.getElementById("suggestions").classList.remove("open"), 150));
+
+  document.getElementById("scoutBtn").addEventListener("click", doSearch);
+
+  // quick nation filters
+  document.querySelectorAll(".qf-btn[data-nation]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const nat = btn.dataset.nation;
+      const sel = document.getElementById("fNation");
+      const active = btn.classList.contains("active");
+      document.querySelectorAll(".qf-btn[data-nation]").forEach(b=>b.classList.remove("active"));
+      if (active) { sel.value = ""; }
+      else { sel.value = nat; btn.classList.add("active"); }
+    });
+  });
+
+  // U23 quick filter
+  document.getElementById("qfYoung").addEventListener("click", () => {
+    const btn = document.getElementById("qfYoung");
+    const maxInput = document.getElementById("fMaxAge");
+    if (btn.classList.contains("active")) { btn.classList.remove("active"); maxInput.value=""; }
+    else { btn.classList.add("active"); maxInput.value="23"; }
+  });
+
+  // sync quick filter state when selects change
+  document.getElementById("fNation").addEventListener("change", () => {
+    const val = document.getElementById("fNation").value;
+    document.querySelectorAll(".qf-btn[data-nation]").forEach(b => {
+      b.classList.toggle("active", b.dataset.nation === val);
+    });
+  });
+  document.getElementById("fMaxAge").addEventListener("change", () => {
+    const val = document.getElementById("fMaxAge").value;
+    const btn = document.getElementById("qfYoung");
+    btn.classList.toggle("active", val === "23");
+  });
+});
+</script>
+</body>
+</html>

@@ -86,7 +86,7 @@ Projeyi kendi bilgisayarınızda çalıştırmak ve CORS (Cross-Origin Resource 
 ## 👨‍💻 Geliştirici
 
 **Mahmut Semih Kiraz** *Computer Scientist & Data Analytics Enthusiast*
-* [LinkedIn](https://www.linkedin.com/in/senin-linkedin-linkin-buraya) *(Bu parantezi silip kendi linkini yapıştır)*
+* [LinkedIn](https://www.linkedin.com/in/semihkiraz1/)
 * [GitHub](https://github.com/ssemiih)
 
 *Futbol verileri ve makine öğrenimi tabanlı analiz projeleri geliştirmekteyim. Geri bildirimleriniz ve işbirlikleri için ulaşabilirsiniz.*

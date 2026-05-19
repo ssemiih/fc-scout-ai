@@ -86,7 +86,7 @@ To run the project locally and bypass browser CORS (Cross-Origin Resource Sharin
 ## 👨‍💻 Developer
 
 **Mahmut Semih Kiraz** *Computer Scientist & Data Analytics Enthusiast*
-* [LinkedIn](https://www.linkedin.com/in/YOUR_LINKEDIN_URL) *(Buraya kendi linkini eklemeyi unutma)*
+* [LinkedIn](https://www.linkedin.com/in/semihkiraz1/)
 * [GitHub](https://github.com/ssemiih)
 
 *Developing data-driven and machine learning-based analysis projects in football analytics. Open for feedback and collaborations.*

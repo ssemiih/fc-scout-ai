@@ -1,206 +1,99 @@
-# ⚡ FC Scout AI — Player Similarity Engine
+# ⚡ FC Scout AI — Veri Odaklı Oyuncu Benzerlik Motoru
 
-> EA FC 26 oyuncuları arasında **pozisyona özel ağırlıklı benzerlik analizi** yapan scouting aracı.  
-> 14,412 oyuncu · Saf HTML/CSS/JS · Sıfır bağımlılık · GitHub Pages'de çalışır
+> EA FC 26 oyuncuları arasında **pozisyona özel ağırlıklı benzerlik analizi (Similarity Engine)** yapan, veri bilimi prensipleriyle çalışan scouting aracı.  
+> 14,412 Oyuncu · Saf HTML/CSS/JS · Sıfır Bağımlılık · Tamamen İstemci Taraflı (Client-side)
 
-**[🔴 Canlı Demo](https://ssemiih.github.io/fc-scout-ai)**
-
----
-
-![Preview](https://i.imgur.com/placeholder.png)
+**[🔴 Canlı Demo İçin Tıklayın](https://ssemiih.github.io/fc-scout-ai)**
 
 ---
 
-## ✨ Özellikler
+---
+
+## ✨ Öne Çıkan Özellikler
 
 | Özellik | Detay |
 |--------|-------|
-| 🧮 Pozisyona özel ağırlıklandırma | ST, CB, CAM gibi her mevki için farklı özellik ağırlıkları |
-| 🎯 Çok katmanlı benzerlik skoru | Euclidean mesafe + lig tier cezası + ayak bonusu + play style skoru |
-| 🎨 Benzerlik renk kodlaması | Mükemmel (yeşil) → Çok İyi → İyi → Orta → Düşük (kırmızı) |
-| 🔍 Anlık autocomplete | Yazarken oyuncu önerileri |
-| 🏳️ Milliyet filtresi | 155+ ülke, bayrak ikonları ile |
-| 🏆 Lig filtresi | 45 lig |
-| 📍 Pozisyon filtresi | Aynı mevki veya spesifik pozisyon |
-| 👶 Yaş filtresi | Min/max yaş, U23 hızlı filtresi |
-| 🎴 EA FC kart görselleri | Resmi EA kart fotoğrafları |
-| 📊 Detaylı stat barları | Karta tıklayınca 14 özellik gösterir |
-| 🎮 Play style gösterimi | Gold/Silver stil etiketleri |
+| 🧮 **Ağırlıklı Vektör Analizi** | ST, CB, CAM gibi her mevki için farklı özellik ağırlıkları ile dinamik hesaplama. |
+| 🎯 **Çok Katmanlı Skorlama** | Euclidean (Öklid) mesafesi + lig seviyesi cezası + zayıf ayak/yetenek cezaları + play style bonusları. |
+| 🎨 **Veri Görselleştirme** | Benzerlik oranına göre renk kodlaması: Mükemmel (Yeşil) → Orta (Sarı) → Düşük (Kırmızı). |
+| 🔍 **Anlık Arama (Autocomplete)** | Performanslı ve gecikmesiz oyuncu öneri sistemi. |
+| 📊 **Detaylı Analiz Barları** | Karta tıklandığında 14 farklı oyuncu özelliğinin görselleştirilmesi. |
+| 🎯 **Gelişmiş Filtreleme** | 155+ Ülke, 45 Lig, Spesifik Mevki ve Yaş (U23 vb.) filtreleri. |
 
 ---
 
-## 🧠 Algoritma
+## 🧠 Algoritma & Veri Bilimi Yaklaşımı
 
 ### Temel Mantık
+Projeyi standart bir arama motorundan ayıran temel özellik; her oyuncu için **pozisyonuna göre belirlenmiş ağırlıklı bir özellik vektörü** oluşturulmasıdır. Nihai benzerlik skoru şu denkleme dayanır:
 
-Her oyuncu için **pozisyonuna göre belirlenmiş ağırlıklı özellik vektörü** oluşturulur. Benzerlik skoru şu bileşenlerden oluşur:
+`final_score = base_score - tier_penalty + foot_bonus - wf_penalty - sm_penalty + style_bonus`
 
-```
-final_score = base_score - tier_penalty + foot_bonus - wf_penalty - sm_penalty + style_bonus
-```
+### 1. Boyut İndirgeme ve Grup Ağırlıkları
+Oyuncuların onlarca farklı istatistiği, mantıksal kümelere ayrılmıştır:
+* **Box Threat:** Finishing, Positioning, Heading Accuracy, Penalties
+* **Distance Threat:** Long Shots, Shot Power, Volleys
+* **Playmaking:** Short Passing, Vision, Curve
+* **Agility:** Agility, Balance, Reactions, Composure
+* *(ve diğer fiziksel/defansif gruplar...)*
 
-### 1. Özellik Grupları ve Ağırlıkları
+### 2. Pozisyona Özel Ağırlıklandırma Matrisi (Örnek)
 
-```
-Box Threat       → Finishing, Positioning, Heading Accuracy, Penalties
-Distance Threat  → Long Shots, Shot Power, Volleys
-Playmaking       → Short Passing, Vision, Curve
-Service          → Crossing, Long Passing, Free Kick Accuracy
-Ball Carry       → Dribbling, Ball Control
-Agility          → Agility, Balance, Reactions, Composure
-Ball Winning     → Standing Tackle, Sliding Tackle, Interceptions
-Def Awareness    → Def Awareness
-Speed            → Acceleration, Sprint Speed
-Physical         → Strength, Jumping, Aggression, Stamina
-```
+| Mevki | Birincil Öncelik | Ağırlık | İkincil Öncelik | Ağırlık |
+|-------|---------------|---------|---------------|---------|
+| **ST** | Box Threat | %35 | Speed | %12 |
+| **CB** | Def Awareness | %29 | Ball Winning | %29 |
+| **CAM** | Playmaking | %30 | Distance Threat | %18 |
 
-### 2. Pozisyona Özel Ağırlıklar (Örnek)
+### 3. Mesafe (Distance) ve Skor Hesabı
+Veriler arasındaki varyansı dengelemek için Z-score normalizasyonu mantığı kullanılmış ve Öklid mesafesi üzerinden bir taban skor hesaplanmıştır:
 
-| Mevki | En Önemli Grup | Ağırlık |
-|-------|---------------|---------|
-| ST    | Box Threat    | 35%     |
-| CB    | Def Awareness + Ball Winning | 29% + 29% |
-| LW/RW | Speed + Ball Carry | 25% + 20% |
-| CDM   | Ball Winning + Physical | 25% + 25% |
-| CAM   | Playmaking + Distance Threat | 30% + 18% |
-
-### 3. Mesafe Hesabı
-
-```
-scaled_features = StandardScaler(features)  # Z-score normalization
-weighted_vector = scaled * position_weights
-distance        = euclidean(target_vector, candidate_vector)
-base_score      = 100 × exp(−distance² × 15)
-```
+`scaled_features = StandardScaler(features)`  
+`weighted_vector = scaled_features * position_weights`  
+`distance = euclidean(target_vector, candidate_vector)`  
+`base_score = 100 * exp(-distance^2 * 15)`
 
 ### 4. Bağlam Cezaları ve Bonusları
-
-```
-tier_penalty = |league_tier_target - league_tier_candidate| × 6.0
-foot_bonus   = +2.0 (aynı ayak) | -2.0 (farklı ayak)
-wf_penalty   = |weak_foot_diff| × 1.5
-sm_penalty   = |skill_moves_diff| × 1.5
-style_bonus  = Paylaşılan play style başına +1.0 / +1.5 / +2.5
-                (Gold+Gold: +2.5, Silver+Silver: +1.5, Mixed: +1.0)
-```
+Matematiksel benzerlik, futbolun gerçeklikleriyle (bağlam) harmanlanmıştır:
+* **Lig Seviyesi (Tier) Cezası:** Alt lig ile üst lig oyuncusu arasındaki kalite farkı cezalandırılır.
+* **Fiziksel Özellikler:** Ters ayak, yetenek hareketleri farklılıkları negatif çarpan olarak eklenir.
+* **Oyun Stili (Play Styles):** Ortak altın/gümüş oyun stilleri skora bonus (+1.0 / +2.5) olarak yansır.
 
 ---
 
-## 🚀 GitHub Pages'e Kurulum (5 Dakika)
+## 📁 Proje Mimarisi & Veri Formatı
 
-### 1. Repoyu oluştur
+**Bağımlılık Yoktur.** Sadece modern bir web tarayıcısı gereklidir. Veri çekimi performansını maksimize etmek için JSON dosyası `compact key` formatında küçültülmüştür.
 
-```bash
-# GitHub'da yeni bir public repo oluştur: fc-scout-ai
-# Sonra local'e klonla:
-git clone https://github.com/YOUR_USERNAME/fc-scout-ai.git
-cd fc-scout-ai
-```
-
-### 2. Dosyaları kopyala
-
-```
+```text
 fc-scout-ai/
-├── index.html          ← Ana sayfa
+├── index.html          # Tek dosya uygulama (Core UI & Logic)
 ├── data/
-│   └── players.json    ← Oyuncu verisi (9MB)
+│   └── players.json    # Sıkıştırılmış EA FC 26 oyuncu veriseti (~9MB)
 └── README.md
 ```
 
-### 3. Push et
+---
 
-```bash
-git add .
-git commit -m "🚀 FC Scout AI initial commit"
-git push origin main
-```
+## 🛠️ Kurulum & Lokal Geliştirme
 
-### 4. GitHub Pages'i aç
+Projeyi kendi bilgisayarınızda çalıştırmak ve CORS (Cross-Origin Resource Sharing) politikalarına takılmamak için basit bir HTTP sunucusu kullanmalısınız:
 
-1. Repo → **Settings** → **Pages**
-2. Source: `Deploy from a branch`
-3. Branch: `main` → `/ (root)` → **Save**
-4. ~2 dakika sonra: `https://YOUR_USERNAME.github.io/fc-scout-ai` 🎉
+`python -m http.server 8080`
 
 ---
 
-## 📁 Proje Yapısı
+## 👨‍💻 Geliştirici
 
-```
-fc-scout-ai/
-├── index.html          # Tek dosya uygulama (HTML + CSS + JS)
-├── data/
-│   └── players.json    # EA FC 26 oyuncu verisi (compact format)
-└── README.md
-```
+**Mahmut Semih Kiraz** *Computer Scientist & Data Analytics Enthusiast*
+* [LinkedIn](https://www.linkedin.com/in/senin-linkedin-linkin-buraya) *(Bu parantezi silip kendi linkini yapıştır)*
+* [GitHub](https://github.com/ssemiih)
 
-**Bağımlılık yok.** Sadece tarayıcı gerekli.
-
----
-
-## 🛠️ Lokal Geliştirme
-
-```bash
-# Herhangi bir HTTP server ile çalıştır (CORS için gerekli)
-python3 -m http.server 8080
-# Sonra: http://localhost:8080
-```
-
-> ⚠️ `index.html`'i direkt dosya olarak açarsan (`file://`) `data/players.json` yüklenemez. Bir HTTP server kullan.
-
----
-
-## 📊 Veri Formatı
-
-`data/players.json` compact key formatı:
-
-| Key | Alan           |
-|-----|---------------|
-| `n` | Name           |
-| `pos` | Position     |
-| `ov` | OVR            |
-| `pa/sh/ps/dr/df/ph` | PAC/SHO/PAS/DRI/DEF/PHY |
-| `nat` | Nation        |
-| `lea` | League        |
-| `tm` | Team           |
-| `age` | Age           |
-| `pf` | Preferred Foot |
-| `wf` | Weak Foot      |
-| `sm` | Skill Moves    |
-| `sty` | Play Styles   |
-| `card` | Card image URL |
-
----
-
-## 🔧 Özelleştirme
-
-### Pozisyon ağırlıklarını değiştirmek
-
-`index.html` içinde `posWeights` objesini düzenle:
-
-```javascript
-const posWeights = {
-  ST: {
-    "Box Threat": 0.35,   // Gol koklama ağırlığını artır/azalt
-    "Speed": 0.12,
-    // ...
-  }
-};
-```
-
-### Benzerlik hassasiyetini ayarlamak
-
-```javascript
-const SHARP = 15.0;  // Büyüttükçe sadece çok benzer oyuncular çıkar
-                     // Küçülttükçe daha geniş sonuçlar gelir
-```
+*Futbol verileri ve makine öğrenimi tabanlı analiz projeleri geliştirmekteyim. Geri bildirimleriniz ve işbirlikleri için ulaşabilirsiniz.*
 
 ---
 
 ## 📝 Lisans
+MIT License — İstediğiniz gibi kullanabilir, geliştirebilir ve kendi projelerinize entegre edebilirsiniz.
 
-MIT — İstediğin gibi kullan, fork'la, geliştir.
-
----
-
-*EA FC 26 verileri eğitim/hobi amaçlı kullanılmıştır. FC Scout AI, EA Sports ile resmi bir bağlantısı olmayan bağımsız bir projedir.*
+> *Not: EA FC 26 verileri eğitim, hobi ve veri bilimi pratikleri amacıyla kullanılmıştır. FC Scout AI, bağımsız bir analitik projesidir ve EA Sports ile resmi bir bağı bulunmamaktadır.*
